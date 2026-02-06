@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>startURL</key>
+    <string>https://moodle.example.com/mod/quiz/view.php?id=123</string>
+    <key>allowQuit</key>
+    <false/>
+    <key>hashedQuitPassword</key>
+    <string></string>
+    <key>enableJavaScript</key>
+    <true/>
+    <key>allowDownloads</key>
+    <false/>
+    <key>enablePrinting</key>
+    <false/>
+    <key>allowBrowsingBackForward</key>
+    <false/>
+    <key>enableClipboard</key>
+    <false/>
+    <key>browserUserAgent</key>
+    <string></string>
+    <key>browserViewMode</key>
+    <integer>1</integer>
+    <key>enableURLFilter</key>
+    <true/>
+    <key>URLFilterEnable</key>
+    <true/>
+    <key>URLFilterRules</key>
+    <array/>
+    <key>showTaskBar</key>
+    <false/>
+    <key>showReloadButton</key>
+    <true/>
+    <key>showTime</key>
+    <true/>
+    <key>showInputLanguage</key>
+    <false/>
+    <key>enableAltMouseWheel</key>
+    <false/>
+    <key>allowSpellCheck</key>
+    <false/>
+    <key>enableTouchExit</key>
+    <false/>
+    <key>insideSebEnableSwitchUser</key>
+    <false/>
+    <key>insideSebEnableLockThisComputer</key>
+    <false/>
+    <key>insideSebEnableChangeAPassword</key>
+    <false/>
+    <key>insideSebEnableStartTaskManager</key>
+    <false/>
+    <key>insideSebEnableLogOff</key>
+    <false/>
+    <key>insideSebEnableShutDown</key>
+    <false/>
+    <key>insideSebEnableEaseOfAccess</key>
+    <false/>
+    <key>insideSebEnableVmWareClientShade</key>
+    <false/>
+</dict>
+</plist>

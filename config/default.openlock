@@ -1,0 +1,44 @@
+{
+    "examName": "Default Exam Configuration",
+    "startUrl": "",
+    "exitPassword": "",
+    "allowQuit": true,
+
+    "navigation": {
+        "allowedUrlPatterns": [],
+        "blockedUrlPatterns": [],
+        "allowNavigation": true,
+        "allowReload": true,
+        "allowBackForward": false
+    },
+
+    "browser": {
+        "userAgent": "",
+        "enableJavaScript": true,
+        "allowDownloads": false,
+        "allowPrint": false,
+        "allowClipboard": false,
+        "showToolbar": true
+    },
+
+    "security": {
+        "detectVM": true,
+        "detectDebugger": true,
+        "allowScreenCapture": false,
+        "processBlocklist": []
+    },
+
+    "kiosk": {
+        "fullscreen": true,
+        "multiMonitorLockdown": true,
+        "blockTaskSwitching": true
+    },
+
+    "network": {
+        "ssoAllowedDomains": [
+            "login.microsoftonline.com",
+            "accounts.google.com"
+        ],
+        "allowWebRTC": false
+    }
+}

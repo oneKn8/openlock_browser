@@ -1,0 +1,53 @@
+{
+    "screen_capture": [
+        "obs", "obs-studio", "ffmpeg", "recordmydesktop",
+        "simplescreenrecorder", "kazam", "peek", "wf-recorder",
+        "vokoscreen", "screenstudio", "flameshot", "spectacle",
+        "gnome-screenshot", "xfce4-screenshooter", "scrot", "maim",
+        "import", "shutter"
+    ],
+    "screen_sharing": [
+        "zoom", "teams", "microsoft-teams", "discord", "slack",
+        "skype", "anydesk", "teamviewer", "rustdesk", "webex",
+        "gotomeeting", "google-meet"
+    ],
+    "messaging": [
+        "telegram-desktop", "signal-desktop", "pidgin",
+        "thunderbird", "evolution", "geary", "element-desktop",
+        "wire-desktop", "whatsapp-desktop"
+    ],
+    "virtual_machines": [
+        "virtualbox", "VBoxManage", "VBoxHeadless",
+        "vmware", "vmplayer", "vmrun",
+        "qemu", "qemu-system-x86_64", "qemu-system-i386",
+        "virt-manager", "virsh", "gnome-boxes"
+    ],
+    "remote_desktop": [
+        "xrdp", "vino", "remmina", "x11vnc", "tigervnc",
+        "vinagre", "krdc", "freerdp", "xfreerdp",
+        "ssvnc", "tightvnc", "novnc"
+    ],
+    "terminals": [
+        "gnome-terminal", "konsole", "xterm", "alacritty",
+        "kitty", "tmux", "screen", "terminator", "tilix",
+        "guake", "yakuake", "urxvt", "rxvt", "st",
+        "xfce4-terminal", "lxterminal", "mate-terminal",
+        "foot", "wezterm", "contour", "rio", "ghostty"
+    ],
+    "browsers": [
+        "firefox", "chromium", "chromium-browser", "brave",
+        "brave-browser", "vivaldi", "opera", "epiphany",
+        "midori", "falkon", "google-chrome", "microsoft-edge",
+        "tor-browser", "waterfox", "librewolf", "floorp"
+    ],
+    "automation": [
+        "xdotool", "xautomation", "ydotool", "wtype",
+        "xte", "xclip", "xsel", "wl-copy", "wl-paste",
+        "xbindkeys", "sxhkd", "autokey-gtk", "autokey-qt"
+    ],
+    "patterns": [
+        ".*vnc.*server.*",
+        ".*screen.*record.*",
+        ".*remote.*desktop.*"
+    ]
+}

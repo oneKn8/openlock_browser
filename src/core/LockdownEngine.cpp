@@ -13,6 +13,7 @@
 #include "protocol/SEBRequestInterceptor.h"
 
 #include <QDebug>
+#include <QFile>
 #include <QWebEngineProfile>
 #include <QCoreApplication>
 
@@ -91,7 +92,11 @@ bool LockdownEngine::initialize(const QString& configPath)
     }
 
     // Initialize process guard with blocklist
-    QString blocklistPath = QCoreApplication::applicationDirPath() + "/../share/openlock/blocklist.json";
+    // Try build-local path first, then installed path
+    QString blocklistPath = QCoreApplication::applicationDirPath() + "/share/openlock/blocklist.json";
+    if (!QFile::exists(blocklistPath)) {
+        blocklistPath = QCoreApplication::applicationDirPath() + "/../share/openlock/blocklist.json";
+    }
     if (!m_processGuard->initialize(blocklistPath)) {
         qWarning() << "Process guard initialization failed";
     }

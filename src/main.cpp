@@ -118,6 +118,9 @@ int main(int argc, char* argv[])
     if (browser) {
         if (startUrl.isValid()) {
             browser->navigateTo(startUrl);
+        } else if (browser->currentUrl().isEmpty() || !browser->currentUrl().isValid()) {
+            // No URL configured anywhere -- load a default so the window isn't blank
+            browser->navigateTo(QUrl("https://www.google.com"));
         }
         browser->show();
     }

@@ -11,6 +11,7 @@
 
 #include <sys/ptrace.h>
 #include <unistd.h>
+#include <cerrno>
 
 namespace openlock {
 
@@ -60,6 +61,12 @@ bool DebugDetector::checkPtraceSelf() const
     // Try to ptrace ourselves — fails if already being traced
     long result = ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
     if (result == -1) {
+        if (errno == EPERM) {
+            // Yama ptrace_scope or similar security policy is blocking us.
+            // This is NOT evidence of a debugger — fall back to TracerPid check,
+            // which is already handled by checkTracerPid().
+            return false;
+        }
         m_detectedDebugger = "ptrace attached";
         qWarning() << "PTRACE_TRACEME failed — already being traced";
         return true;

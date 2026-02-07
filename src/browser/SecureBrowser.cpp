@@ -101,7 +101,16 @@ SecureBrowser::SecureBrowser(QWidget* parent)
 {
 }
 
-SecureBrowser::~SecureBrowser() = default;
+SecureBrowser::~SecureBrowser()
+{
+    // Delete view first (it references the page but doesn't own it),
+    // then delete the page before QObject destroys the profile.
+    // This avoids "Release of profile requested but WebEnginePage still not deleted".
+    delete m_webView;
+    m_webView = nullptr;
+    delete m_page;
+    m_page = nullptr;
+}
 
 bool SecureBrowser::initialize(const Config* config)
 {

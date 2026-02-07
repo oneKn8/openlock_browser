@@ -128,6 +128,11 @@ endif()
 add_executable(openlock src/main.cpp)
 target_link_libraries(openlock PRIVATE openlock_core)
 
+# Copy data files to build directory for development runs
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/share/openlock)
+configure_file(config/blocklist.json ${CMAKE_BINARY_DIR}/share/openlock/blocklist.json COPYONLY)
+configure_file(config/default.openlock ${CMAKE_BINARY_DIR}/share/openlock/default.openlock COPYONLY)
+
 # Install
 install(TARGETS openlock RUNTIME DESTINATION bin)
 install(FILES config/default.openlock DESTINATION share/openlock)

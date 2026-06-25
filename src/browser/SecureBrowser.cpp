@@ -270,9 +270,11 @@ void SecureBrowser::setupToolbar()
 
     auto makeBtn = [&](const QString& text, auto slot) {
         auto* btn = new QPushButton(text, m_toolbar);
-        btn->setFixedSize(60, 28);
+        btn->setMinimumSize(60, 28);
+        btn->setMaximumSize(200, 28);
         btn->setStyleSheet(
             "QPushButton { background: #3c3c3c; color: #ddd; border: 1px solid #555; "
+            "padding-left: 10px; padding-right: 10px; "
             "border-radius: 3px; font-size: 12px; } "
             "QPushButton:hover { background: #4c4c4c; } "
             "QPushButton:pressed { background: #555; }");

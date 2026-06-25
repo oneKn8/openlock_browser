@@ -20,6 +20,9 @@
 #include <QKeyEvent>
 #include <QDebug>
 
+#include <libintl.h>
+#define _(String) gettext(String)
+
 namespace openlock {
 
 // --- SecurePage ---
@@ -278,10 +281,10 @@ void SecureBrowser::setupToolbar()
         return btn;
     };
 
-    makeBtn("Back", [this]() { m_webView->back(); });
-    makeBtn("Forward", [this]() { m_webView->forward(); });
-    makeBtn("Reload", [this]() { m_webView->reload(); });
-    makeBtn("Stop", [this]() { m_webView->stop(); });
+    makeBtn(_("Back"), [this]() { m_webView->back(); });
+    makeBtn(_("Forward"), [this]() { m_webView->forward(); });
+    makeBtn(_("Reload"), [this]() { m_webView->reload(); });
+    makeBtn(_("Stop"), [this]() { m_webView->stop(); });
 
     layout->addStretch();
 

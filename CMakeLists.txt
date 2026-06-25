@@ -133,6 +133,9 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/share/openlock)
 configure_file(config/blocklist.json ${CMAKE_BINARY_DIR}/share/openlock/blocklist.json COPYONLY)
 configure_file(config/default.openlock ${CMAKE_BINARY_DIR}/share/openlock/default.openlock COPYONLY)
 
+# Desktop file
+set(DESKTOP_FILE ${PROJECT_NAME}.desktop)
+
 # Install
 install(TARGETS openlock RUNTIME DESTINATION bin)
 install(FILES config/default.openlock DESTINATION share/openlock)
@@ -168,3 +171,5 @@ set(CPACK_PACKAGE_LICENSE "MPL-2.0")
 set(CPACK_GENERATOR "DEB;RPM")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-webengine (>= 6.2)")
 include(CPack)
+
+add_subdirectory(data)

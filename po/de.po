@@ -19,32 +19,32 @@ msgstr ""
 
 #: src/browser/SecureBrowser.cpp:284
 msgid "Back"
-msgstr ""
+msgstr "Vor"
 
 #: src/browser/SecureBrowser.cpp:285
 msgid "Forward"
-msgstr ""
+msgstr "Zurück"
 
 #: OpenLock.desktop.in:6
 msgid "Internet;WWW;Browser;Web;Explorer;Kiosk;SEB;Exam;"
-msgstr ""
+msgstr "Internet;WWW;Browser;Web;Explorer;Kiosk;SEB;Prüfung;"
 
 #: OpenLock.desktop.in:3
 msgid "OpenLock Browser"
-msgstr ""
+msgstr "OpenLock Browser"
 
 #: OpenLock.desktop.in:4
 msgid "OpenLock Web Browser"
-msgstr ""
+msgstr "OpenLock Web-Browser"
 
 #: src/browser/SecureBrowser.cpp:286
 msgid "Reload"
-msgstr ""
+msgstr "Aktualisieren"
 
 #: OpenLock.desktop.in:5
 msgid "Secure kiosk-mode web browser for exams"
-msgstr ""
+msgstr "Sicherer Web-Browser für Prüfungen mit Kiosk-Modus"
 
 #: src/browser/SecureBrowser.cpp:287
 msgid "Stop"
-msgstr ""
+msgstr "Abbrechen"

@@ -16,6 +16,16 @@ option(OPENLOCK_BUILD_TESTS "Build unit tests" ON)
 option(OPENLOCK_ENABLE_WAYLAND "Enable Wayland/Cage kiosk support" ON)
 option(OPENLOCK_ENABLE_VM_DETECTION "Enable VM detection (can be disabled for dev)" ON)
 
+# Standard install paths
+include(GNUInstallDirs)
+
+# i18n support
+find_package(Gettext REQUIRED)
+set(GETTEXT_PACKAGE "${PROJECT_NAME}")
+
+# configure locale path
+configure_file(src/localepath.h.in ${CMAKE_BINARY_DIR}/src/localepath.h)
+
 # Find Qt6
 find_package(Qt6 REQUIRED COMPONENTS
     Core
@@ -85,6 +95,7 @@ add_library(openlock_core STATIC
 
 target_include_directories(openlock_core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/src
 )
 
 target_link_libraries(openlock_core PUBLIC
@@ -173,3 +184,4 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-webengine (>= 6.2)")
 include(CPack)
 
 add_subdirectory(data)
+add_subdirectory(po)

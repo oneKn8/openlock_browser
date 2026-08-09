@@ -12,10 +12,16 @@
 #include <QUrl>
 #include <QDebug>
 
+#include <libintl.h>
+#include "localepath.h"
+
 using namespace openlock;
 
 int main(int argc, char* argv[])
 {
+    bindtextdomain("OpenLock", translationDirectory().toUtf8().data());
+    textdomain("OpenLock");
+
     // QtWebEngine requires this before QApplication
     QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
 

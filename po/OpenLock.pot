@@ -1,0 +1,50 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the OpenLock package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: OpenLock\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-25 13:00+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: OpenLock.desktop.in:3
+msgid "OpenLock Browser"
+msgstr ""
+
+#: OpenLock.desktop.in:4
+msgid "OpenLock Web Browser"
+msgstr ""
+
+#: OpenLock.desktop.in:5
+msgid "Secure kiosk-mode web browser for exams"
+msgstr ""
+
+#: OpenLock.desktop.in:6
+msgid "Internet;WWW;Browser;Web;Explorer;Kiosk;SEB;Exam;"
+msgstr ""
+
+#: src/browser/SecureBrowser.cpp:284
+msgid "Back"
+msgstr ""
+
+#: src/browser/SecureBrowser.cpp:285
+msgid "Forward"
+msgstr ""
+
+#: src/browser/SecureBrowser.cpp:286
+msgid "Reload"
+msgstr ""
+
+#: src/browser/SecureBrowser.cpp:287
+msgid "Stop"
+msgstr ""

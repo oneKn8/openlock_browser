@@ -20,6 +20,9 @@
 #include <QKeyEvent>
 #include <QDebug>
 
+#include <libintl.h>
+#define _(String) gettext(String)
+
 namespace openlock {
 
 // --- SecurePage ---
@@ -267,9 +270,11 @@ void SecureBrowser::setupToolbar()
 
     auto makeBtn = [&](const QString& text, auto slot) {
         auto* btn = new QPushButton(text, m_toolbar);
-        btn->setFixedSize(60, 28);
+        btn->setMinimumSize(60, 28);
+        btn->setMaximumSize(200, 28);
         btn->setStyleSheet(
             "QPushButton { background: #3c3c3c; color: #ddd; border: 1px solid #555; "
+            "padding-left: 10px; padding-right: 10px; "
             "border-radius: 3px; font-size: 12px; } "
             "QPushButton:hover { background: #4c4c4c; } "
             "QPushButton:pressed { background: #555; }");
@@ -278,10 +283,10 @@ void SecureBrowser::setupToolbar()
         return btn;
     };
 
-    makeBtn("Back", [this]() { m_webView->back(); });
-    makeBtn("Forward", [this]() { m_webView->forward(); });
-    makeBtn("Reload", [this]() { m_webView->reload(); });
-    makeBtn("Stop", [this]() { m_webView->stop(); });
+    makeBtn(_("Back"), [this]() { m_webView->back(); });
+    makeBtn(_("Forward"), [this]() { m_webView->forward(); });
+    makeBtn(_("Reload"), [this]() { m_webView->reload(); });
+    makeBtn(_("Stop"), [this]() { m_webView->stop(); });
 
     layout->addStretch();
 

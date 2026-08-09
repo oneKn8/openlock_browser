@@ -1,0 +1,6 @@
+# Configure .desktop file
+configure_file(${DESKTOP_FILE}.in ${CMAKE_CURRENT_BINARY_DIR}/${DESKTOP_FILE})
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${DESKTOP_FILE}
+        DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/applications
+)

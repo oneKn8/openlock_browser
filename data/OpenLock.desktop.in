@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=OpenLock Browser
+GenericName=OpenLock Web Browser
+Comment=Secure kiosk-mode web browser for exams
+Keywords=Internet;WWW;Browser;Web;Explorer;Kiosk;SEB;Exam;
+Type=Application
+Icon=web-browser
+#Icon=@CMAKE_INSTALL_FULL_DATADIR@/openlock/openlock.svg
+Exec=openlock %u
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;

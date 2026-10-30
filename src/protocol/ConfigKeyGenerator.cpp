@@ -78,11 +78,15 @@ QString ConfigKeyGenerator::settingsToSebJson(const QVariantMap& settings) const
 
     bool first = true;
     for (const QString& key : keys) {
+        QVariant v = settings[key];
+        if (v.typeId() == QMetaType::QVariantMap && v.toMap().isEmpty())
+            continue;
+
         if (!first) result += ",";
         first = false;
 
         result += "\"" + key + "\":";
-        result += variantToJson(settings[key]);
+        result += variantToJson(v);
     }
 
     result += "}";

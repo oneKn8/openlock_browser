@@ -3,6 +3,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #include "core/Config.h"
+#include "protocol/SEBConfigParser.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -10,6 +11,7 @@
 #include <QJsonArray>
 #include <QXmlStreamReader>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDebug>
 
 namespace openlock {
@@ -34,11 +36,15 @@ bool Config::loadFromFile(const QString& path)
 
     if (isSebFile(path)) {
         m_format = ConfigFormat::SEB;
-        return parseSebConfig(data);
-    } else {
-        m_format = ConfigFormat::OpenLock;
-        return parseOpenLockConfig(data);
+        QByteArray xmlData = SEBConfigParser::decryptSebFile(data, m_examConfig.sebConfigPassword);
+        if (xmlData.isEmpty()) {
+            emit configError("Failed to decrypt/decompress SEB config: " + path);
+            return false;
+        }
+        return parseSebConfig(xmlData);
     }
+    m_format = ConfigFormat::OpenLock;
+    return parseOpenLockConfig(data);
 }
 
 bool Config::loadFromUrl(const QUrl& url)
@@ -54,16 +60,12 @@ bool Config::loadFromSebData(const QByteArray& data, const QString& password)
     m_format = ConfigFormat::SEB;
     m_rawData = data;
 
-    QByteArray configData = data;
-    if (!password.isEmpty()) {
-        configData = decryptSebConfig(data, password);
-        if (configData.isEmpty()) {
-            emit configError("Failed to decrypt SEB config");
-            return false;
-        }
+    QByteArray xmlData = SEBConfigParser::decryptSebFile(data, password);
+    if (xmlData.isEmpty()) {
+        emit configError("Failed to decrypt SEB config");
+        return false;
     }
-
-    return parseSebConfig(configData);
+    return parseSebConfig(xmlData);
 }
 
 ConfigFormat Config::format() const { return m_format; }
@@ -75,6 +77,10 @@ QByteArray Config::configKeyHash() const
 {
     return QCryptographicHash::hash(m_rawData, QCryptographicHash::Sha256);
 }
+
+QVariantMap Config::settingsMap() const { return m_examConfig.settingsMap; }
+
+QByteArray Config::decryptedPlistXml() const { return m_decryptedPlistXml; }
 
 bool Config::isSebFile(const QString& path)
 {
@@ -146,92 +152,105 @@ bool Config::parseOpenLockConfig(const QByteArray& data)
     return true;
 }
 
-bool Config::parseSebConfig(const QByteArray& data)
+static QVariant parsePlistValue(QXmlStreamReader& xml);
+static QVariantMap parsePlistDict(QXmlStreamReader& xml);
+static QVariantList parsePlistArray(QXmlStreamReader& xml);
+
+static QVariantMap parsePlistDict(QXmlStreamReader& xml)
 {
-    // SEB config files are XML plist format (Apple-style property lists)
-    // They may be prefixed with a 4-byte header indicating compression/encryption
-    m_examConfig.sebMode = true;
-    m_examConfig.sebConfigData = data;
-
-    QByteArray xmlData = data;
-
-    // Check for SEB config prefix bytes
-    // Prefix 'pswd' (0x70737764) = password encrypted
-    // Prefix 'phsk' (0x7068736B) = public key hash encrypted
-    // Prefix 'plnd' (0x706C6E64) = plaintext, compressed
-    // No prefix / starts with '<' = plain XML
-    if (xmlData.size() > 4) {
-        QByteArray prefix = xmlData.left(4);
-        if (prefix == "pswd" || prefix == "phsk") {
-            if (m_examConfig.sebConfigPassword.isEmpty()) {
-                emit configError("SEB config is encrypted. Password required.");
-                return false;
-            }
-            xmlData = decryptSebConfig(xmlData, m_examConfig.sebConfigPassword);
-            if (xmlData.isEmpty()) return false;
-        } else if (prefix == "plnd") {
-            // Compressed: skip prefix, decompress with zlib
-            xmlData = qUncompress(xmlData.mid(4));
-            if (xmlData.isEmpty()) {
-                emit configError("Failed to decompress SEB config");
-                return false;
-            }
-        }
-    }
-
-    // Parse XML plist
-    QXmlStreamReader xml(xmlData);
-
-    // Navigate to the root dict
-    while (!xml.atEnd()) {
-        xml.readNext();
-        if (xml.isStartElement() && xml.name() == QStringLiteral("dict")) {
-            break;
-        }
-    }
-
-    // Parse key-value pairs from the plist dict
+    QVariantMap map;
     QString currentKey;
     while (!xml.atEnd()) {
         xml.readNext();
-
-        if (xml.isStartElement()) {
-            if (xml.name() == QStringLiteral("key")) {
-                currentKey = xml.readElementText();
-            } else if (xml.name() == QStringLiteral("string")) {
-                QString value = xml.readElementText();
-                if (currentKey == "startURL") {
-                    m_examConfig.startUrl = QUrl(value);
-                } else if (currentKey == "hashedQuitPassword") {
-                    m_examConfig.exitPassword = value;
-                } else if (currentKey == "browserUserAgent") {
-                    m_examConfig.userAgent = value;
-                }
-            } else if (xml.name() == QStringLiteral("true")) {
-                if (currentKey == "allowQuit") m_examConfig.allowQuit = true;
-                else if (currentKey == "enableJavaScript") m_examConfig.enableJavaScript = true;
-                else if (currentKey == "allowDownloads") m_examConfig.allowDownloads = true;
-                else if (currentKey == "enablePrinting") m_examConfig.allowPrint = true;
-                else if (currentKey == "allowBrowsingBackForward") m_examConfig.allowBackForward = true;
-                else if (currentKey == "enableClipboard") m_examConfig.allowClipboard = true;
-            } else if (xml.name() == QStringLiteral("false")) {
-                if (currentKey == "allowQuit") m_examConfig.allowQuit = false;
-                else if (currentKey == "enableJavaScript") m_examConfig.enableJavaScript = false;
-                else if (currentKey == "allowDownloads") m_examConfig.allowDownloads = false;
-                else if (currentKey == "enablePrinting") m_examConfig.allowPrint = false;
-                else if (currentKey == "allowBrowsingBackForward") m_examConfig.allowBackForward = false;
-                else if (currentKey == "enableClipboard") m_examConfig.allowClipboard = false;
-            } else if (xml.name() == QStringLiteral("integer")) {
-                // Handle integer config values as needed
-                xml.readElementText();
-            }
+        if (xml.isEndElement() && xml.name() == QStringLiteral("dict"))
+            break;
+        if (!xml.isStartElement())
+            continue;
+        if (xml.name() == QStringLiteral("key")) {
+            currentKey = xml.readElementText();
+        } else if (!currentKey.isEmpty()) {
+            QVariant value = parsePlistValue(xml);
+            if (!(value.typeId() == QMetaType::QVariantMap && value.toMap().isEmpty()))
+                map.insert(currentKey, value);
+            currentKey.clear();
         }
     }
+    return map;
+}
 
+static QVariantList parsePlistArray(QXmlStreamReader& xml)
+{
+    QVariantList list;
+    while (!xml.atEnd()) {
+        xml.readNext();
+        if (xml.isEndElement() && xml.name() == QStringLiteral("array"))
+            break;
+        if (!xml.isStartElement())
+            continue;
+        QVariant value = parsePlistValue(xml);
+        if (!(value.typeId() == QMetaType::QVariantMap && value.toMap().isEmpty()))
+            list.append(value);
+    }
+    return list;
+}
+
+static QVariant parsePlistValue(QXmlStreamReader& xml)
+{
+    const QString elemName = xml.name().toString();
+    if (elemName == QStringLiteral("string"))
+        return xml.readElementText();
+    if (elemName == QStringLiteral("true")) { xml.readElementText(); return true; }
+    if (elemName == QStringLiteral("false")) { xml.readElementText(); return false; }
+    if (elemName == QStringLiteral("integer"))
+        return xml.readElementText().toLongLong();
+    if (elemName == QStringLiteral("real"))
+        return xml.readElementText().toDouble();
+    if (elemName == QStringLiteral("data"))
+        return QByteArray::fromBase64(xml.readElementText().toUtf8());
+    if (elemName == QStringLiteral("date"))
+        return QDateTime::fromString(xml.readElementText(), Qt::ISODate);
+    if (elemName == QStringLiteral("dict"))
+        return parsePlistDict(xml);
+    if (elemName == QStringLiteral("array"))
+        return parsePlistArray(xml);
+    xml.readElementText();
+    return {};
+}
+
+bool Config::parseSebConfig(const QByteArray& data)
+{
+    // SEB config files are XML plist format (Apple-style property lists)
+    m_examConfig.sebMode = true;
+    m_examConfig.sebConfigData = data;
+    m_decryptedPlistXml = data;
+
+    // Parse XML plist
+    QXmlStreamReader xml(data);
+    while (!xml.atEnd()) {
+        xml.readNext();
+        if (xml.isStartElement() && xml.name() == QStringLiteral("dict"))
+            break;
+    }
+    if (xml.atEnd() || xml.hasError()) {
+        emit configError("SEB plist: no root dict element found");
+        return false;
+    }
+    m_examConfig.settingsMap = parsePlistDict(xml);
     if (xml.hasError()) {
         emit configError("XML parse error: " + xml.errorString());
         return false;
     }
+    if (m_examConfig.settingsMap.contains("examKeySalt"))
+        m_examConfig.examKeySalt = m_examConfig.settingsMap.value("examKeySalt").toByteArray();
+    m_examConfig.startUrl         = QUrl(m_examConfig.settingsMap.value("startURL").toString());
+    m_examConfig.exitPassword     = m_examConfig.settingsMap.value("hashedQuitPassword").toString();
+    m_examConfig.userAgent        = m_examConfig.settingsMap.value("browserUserAgent").toString();
+    m_examConfig.allowQuit        = m_examConfig.settingsMap.value("allowQuit", false).toBool();
+    m_examConfig.enableJavaScript = m_examConfig.settingsMap.value("enableJavaScript", true).toBool();
+    m_examConfig.allowDownloads   = m_examConfig.settingsMap.value("allowDownloads", false).toBool();
+    m_examConfig.allowPrint       = m_examConfig.settingsMap.value("enablePrinting", false).toBool();
+    m_examConfig.allowBackForward = m_examConfig.settingsMap.value("allowBrowsingBackForward", false).toBool();
+    m_examConfig.allowClipboard   = m_examConfig.settingsMap.value("enableClipboard", false).toBool();
 
     emit configLoaded();
     return true;
@@ -239,12 +258,7 @@ bool Config::parseSebConfig(const QByteArray& data)
 
 QByteArray Config::decryptSebConfig(const QByteArray& encrypted, const QString& password)
 {
-    // SEB uses AES-256-CBC with PBKDF2 key derivation
-    // Implementation requires OpenSSL - full implementation in Phase 4
-    Q_UNUSED(encrypted);
-    Q_UNUSED(password);
-    qWarning() << "SEB config decryption not yet fully implemented";
-    return {};
+    return SEBConfigParser::decryptSebFile(encrypted, password);
 }
 
 } // namespace openlock

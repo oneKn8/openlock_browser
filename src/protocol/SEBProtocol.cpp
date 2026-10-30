@@ -34,17 +34,16 @@ bool SEBProtocol::initialize(const Config* config)
     QByteArray binaryHash = BrowserExamKey::computeBinaryFilesHash(appPath);
     m_examKey->setBinaryFilesHash(binaryHash);
 
-    // Set config XML (raw config data as plist XML)
-    m_examKey->setConfigPlistXml(config->rawConfigData());
+    // Set decrypted plist XML for BEK computation
+    m_examKey->setConfigPlistXml(config->decryptedPlistXml());
 
-    // examKeySalt would come from the .seb config; for now use raw data hash as fallback
-    // TODO: Extract examKeySalt from parsed .seb config
-    m_examKey->setExamKeySalt(config->configKeyHash());
+    // examKeySalt extracted from parsed .seb plist
+    m_examKey->setExamKeySalt(config->examConfig().examKeySalt);
 
     // Config Key setup
     m_configKey->setConfigData(config->rawConfigData());
-    // TODO: Pass parsed settings map for proper SEB-JSON generation
-    // m_configKey->setSettingsMap(config->settingsMap());
+    // Pass parsed settings map for proper SEB-JSON generation
+    m_configKey->setSettingsMap(config->settingsMap());
 
     qInfo() << "SEB protocol initialized";
     qInfo() << "Binary hash:" << binaryHash.toHex().left(16) << "...";

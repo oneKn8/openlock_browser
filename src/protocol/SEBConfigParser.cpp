@@ -12,6 +12,7 @@
 #include <openssl/hmac.h>
 
 #include <cstring>
+#include <zlib.h>
 
 namespace openlock {
 
@@ -215,8 +216,33 @@ private:
             static_cast<unsigned char>(data[1]) != 0x8b) {
             return {};
         }
-
-        return qUncompress(data);
+    
+        z_stream zs{};
+        // 15 + 16 tells zlib to expect gzip format (not raw zlib)
+        if (inflateInit2(&zs, 15 + 16) != Z_OK)
+            return {};
+    
+        zs.next_in = reinterpret_cast<Bytef*>(
+            const_cast<char*>(data.constData()));
+        zs.avail_in = static_cast<uInt>(data.size());
+    
+        QByteArray out;
+        char buf[65536];
+        int ret;
+    
+        do {
+            zs.next_out = reinterpret_cast<Bytef*>(buf);
+            zs.avail_out = sizeof(buf);
+            ret = inflate(&zs, Z_NO_FLUSH);
+            if (ret == Z_STREAM_ERROR || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR) {
+                inflateEnd(&zs);
+                return {};
+            }
+            out.append(buf, sizeof(buf) - zs.avail_out);
+        } while (ret != Z_STREAM_END);
+    
+        inflateEnd(&zs);
+        return out;
     }
 };
 

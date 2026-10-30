@@ -42,15 +42,16 @@ QByteArray SEBConfigParser::decryptRNCryptorV3(const QByteArray& data, const QSt
     const unsigned char* raw = reinterpret_cast<const unsigned char*>(data.constData());
     int pos = 0;
 
-    // Version and options
+    // Version and options (RNCryptor v3: version=0x03, options=0x01;
+    // SEB native format: version=0x01, options=0x00)
     unsigned char version = raw[pos++];
     unsigned char options = raw[pos++];
 
-    if (version != 0x03 && version != 0x02) {
+    if (version != 0x03 && version != 0x02 && version != 0x01) {
         qWarning() << "Unsupported RNCryptor version:" << (int)version;
         return {};
     }
-    if (options != 0x01) {
+    if (options != 0x01 && options != 0x00) {
         qWarning() << "RNCryptor: not password-based (options=" << (int)options << ")";
         return {};
     }

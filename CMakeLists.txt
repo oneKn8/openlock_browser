@@ -141,7 +141,7 @@ endif()
 
 # Main executable
 add_executable(openlock src/main.cpp)
-target_link_libraries(openlock PRIVATE openlock_core)
+target_link_libraries(openlock PRIVATE openlock_core ZLIB::ZLIB)
 
 # Copy data files to build directory for development runs
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/share/openlock)

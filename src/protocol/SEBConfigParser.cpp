@@ -234,7 +234,8 @@ private:
             zs.next_out = reinterpret_cast<Bytef*>(buf);
             zs.avail_out = sizeof(buf);
             ret = inflate(&zs, Z_NO_FLUSH);
-            if (ret == Z_STREAM_ERROR || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR) {
+            if (ret == Z_STREAM_ERROR || ret == Z_DATA_ERROR ||
+                ret == Z_MEM_ERROR || ret == Z_BUF_ERROR) {
                 inflateEnd(&zs);
                 return {};
             }

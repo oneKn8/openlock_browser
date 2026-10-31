@@ -19,8 +19,7 @@ public:
     // RNCryptor v3 decryption (exposed for testing).
     static QByteArray decryptRNCryptorV3(const QByteArray& data, const QString& password);
 
-private:
-    static QByteArray tryGzipDecompress(const QByteArray& data);
+    static QByteArray tryOuterGzip(const QByteArray& data);
 };
 
 } // namespace openlock

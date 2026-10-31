@@ -172,7 +172,7 @@ QByteArray SEBConfigParser::decryptSebFile(const QByteArray& data, const QString
     QByteArray working = data;
 
     // Try gzip decompression first (outer layer)
-    QByteArray decompressed = tryGzipDecompress(working);
+    QByteArray decompressed = tryOuterGzip(working);
     if (!decompressed.isEmpty()) {
         working = decompressed;
     }
@@ -189,13 +189,13 @@ QByteArray SEBConfigParser::decryptSebFile(const QByteArray& data, const QString
         if (decrypted.isEmpty()) return {};
 
         // Inner gzip decompress
-        QByteArray innerDecomp = tryGzipDecompress(decrypted);
+        QByteArray innerDecomp = tryOuterGzip(decrypted);
         return innerDecomp.isEmpty() ? decrypted : innerDecomp;
     }
 
     if (prefix == "plnd") {
         // Plain compressed
-        return tryGzipDecompress(working.mid(4));
+        return tryOuterGzip(working.mid(4));
     }
 
     if (working.startsWith("<?xm")) {
@@ -207,7 +207,7 @@ QByteArray SEBConfigParser::decryptSebFile(const QByteArray& data, const QString
     return {};
 }
 
-QByteArray SEBConfigParser::tryGzipDecompress(const QByteArray& data)
+QByteArray SEBConfigParser::tryOuterGzip(const QByteArray& data)
 {
     // Check gzip magic bytes (0x1f, 0x8b)
     if (data.size() < 2) return {};

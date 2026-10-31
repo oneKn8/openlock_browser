@@ -13,6 +13,7 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDebug>
+#include <QInputDialog>
 
 namespace openlock {
 
@@ -36,7 +37,36 @@ bool Config::loadFromFile(const QString& path)
 
     if (isSebFile(path)) {
         m_format = ConfigFormat::SEB;
-        QByteArray xmlData = SEBConfigParser::decryptSebFile(data, m_examConfig.sebConfigPassword);
+
+        // Detect if password-encrypted (peek at prefix after outer gzip)
+        QByteArray working = data;
+        {
+            // reuse decryptSebFile's gzip logic by just peeking — try decompress
+            QByteArray peek = SEBConfigParser::tryOuterGzip(data);
+            if (!peek.isEmpty()) working = peek;
+        }
+        bool needsPassword = working.size() >= 4 &&
+                            (working.left(4) == "pswd" || working.left(4) == "pwcc");
+
+        QByteArray xmlData;
+        if (needsPassword) {
+            for (int attempt = 0; attempt < 5; ++attempt) {
+                bool ok = false;
+                QString pw = QInputDialog::getText(
+                    nullptr,
+                    "SEB Password",
+                    attempt == 0 ? "Enter the SEB config password:"
+                                : "Wrong password, try again:",
+                    QLineEdit::Password, {}, &ok);
+                if (!ok) break;
+                m_examConfig.sebConfigPassword = pw;
+                xmlData = SEBConfigParser::decryptSebFile(data, pw);
+                if (!xmlData.isEmpty()) break;
+            }
+        } else {
+            xmlData = SEBConfigParser::decryptSebFile(data, {});
+        }
+
         if (xmlData.isEmpty()) {
             emit configError("Failed to decrypt/decompress SEB config: " + path);
             return false;

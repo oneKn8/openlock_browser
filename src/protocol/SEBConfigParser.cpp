@@ -239,6 +239,11 @@ QByteArray SEBConfigParser::tryOuterGzip(const QByteArray& data)
             return {};
         }
         out.append(buf, sizeof(buf) - zs.avail_out);
+        if (out.size() > 16 * 1024 * 1024) {
+            inflateEnd(&zs);
+            qWarning() << "SEBConfigParser: decompressed size exceeds 16 MiB limit";
+            return {};
+        }
     } while (ret != Z_STREAM_END);
 
     inflateEnd(&zs);

@@ -182,11 +182,11 @@ bool Config::parseOpenLockConfig(const QByteArray& data)
     return true;
 }
 
-static QVariant parsePlistValue(QXmlStreamReader& xml);
-static QVariantMap parsePlistDict(QXmlStreamReader& xml);
-static QVariantList parsePlistArray(QXmlStreamReader& xml);
+static QVariant parsePlistValue(QXmlStreamReader& xml, int depth = 0);
+static QVariantMap parsePlistDict(QXmlStreamReader& xml, int depth = 0);
+static QVariantList parsePlistArray(QXmlStreamReader& xml, int depth = 0);
 
-static QVariantMap parsePlistDict(QXmlStreamReader& xml)
+static QVariantMap parsePlistDict(QXmlStreamReader& xml, int depth)
 {
     QVariantMap map;
     QString currentKey;
@@ -199,7 +199,7 @@ static QVariantMap parsePlistDict(QXmlStreamReader& xml)
         if (xml.name() == QStringLiteral("key")) {
             currentKey = xml.readElementText();
         } else if (!currentKey.isEmpty()) {
-            QVariant value = parsePlistValue(xml);
+            QVariant value = parsePlistValue(xml, depth);
             if (!(value.typeId() == QMetaType::QVariantMap && value.toMap().isEmpty()))
                 map.insert(currentKey, value);
             currentKey.clear();
@@ -208,7 +208,7 @@ static QVariantMap parsePlistDict(QXmlStreamReader& xml)
     return map;
 }
 
-static QVariantList parsePlistArray(QXmlStreamReader& xml)
+static QVariantList parsePlistArray(QXmlStreamReader& xml, int depth)
 {
     QVariantList list;
     while (!xml.atEnd()) {
@@ -217,14 +217,14 @@ static QVariantList parsePlistArray(QXmlStreamReader& xml)
             break;
         if (!xml.isStartElement())
             continue;
-        QVariant value = parsePlistValue(xml);
+        QVariant value = parsePlistValue(xml, depth);
         if (!(value.typeId() == QMetaType::QVariantMap && value.toMap().isEmpty()))
             list.append(value);
     }
     return list;
 }
 
-static QVariant parsePlistValue(QXmlStreamReader& xml)
+static QVariant parsePlistValue(QXmlStreamReader& xml, int depth)
 {
     const QString elemName = xml.name().toString();
     if (elemName == QStringLiteral("string"))
@@ -239,10 +239,14 @@ static QVariant parsePlistValue(QXmlStreamReader& xml)
         return QByteArray::fromBase64(xml.readElementText().toUtf8());
     if (elemName == QStringLiteral("date"))
         return QDateTime::fromString(xml.readElementText(), Qt::ISODate);
-    if (elemName == QStringLiteral("dict"))
-        return parsePlistDict(xml);
-    if (elemName == QStringLiteral("array"))
-        return parsePlistArray(xml);
+    if (elemName == QStringLiteral("dict")) {
+        if (depth >= 64) { xml.skipCurrentElement(); return QVariantMap{}; }
+        return parsePlistDict(xml, depth + 1);
+    }
+    if (elemName == QStringLiteral("array")) {
+        if (depth >= 64) { xml.skipCurrentElement(); return QVariantList{}; }
+        return parsePlistArray(xml, depth + 1);
+    }
     xml.readElementText();
     return {};
 }

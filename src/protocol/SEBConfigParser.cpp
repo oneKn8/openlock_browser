@@ -9,6 +9,7 @@
 
 #include <QDebug>
 
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
@@ -42,16 +43,15 @@ QByteArray SEBConfigParser::decryptRNCryptorV3(const QByteArray& data, const QSt
     const unsigned char* raw = reinterpret_cast<const unsigned char*>(data.constData());
     int pos = 0;
 
-    // Version and options (RNCryptor v3: version=0x03, options=0x01;
-    // SEB native format: version=0x01, options=0x00)
+    // Version and options (RNCryptor v2: SEB for Windows, v3: SEB for macOS)
     unsigned char version = raw[pos++];
     unsigned char options = raw[pos++];
 
-    if (version != 0x03 && version != 0x02 && version != 0x01) {
+    if (version != 0x03 && version != 0x02) {
         qWarning() << "Unsupported RNCryptor version:" << (int)version;
         return {};
     }
-    if (options != 0x01 && options != 0x00) {
+    if (options != 0x01) {
         qWarning() << "RNCryptor: not password-based (options=" << (int)options << ")";
         return {};
     }
@@ -87,11 +87,6 @@ QByteArray SEBConfigParser::decryptRNCryptorV3(const QByteArray& data, const QSt
     unsigned char hmacKey[32];
 
     int passLen = passwordBytes.size();
-    // Note: RNCryptor v2 had a bug using character count instead of byte count.
-    // v3 uses byte count correctly.
-    if (version == 0x02) {
-        passLen = password.length(); // character count (the v2 bug)
-    }
 
     if (!PKCS5_PBKDF2_HMAC(
             passwordBytes.constData(), passLen,
@@ -120,7 +115,7 @@ QByteArray SEBConfigParser::decryptRNCryptorV3(const QByteArray& data, const QSt
             raw, data.size() - kHMACSize,
             computedHmac, &hmacLen);
 
-    if (memcmp(computedHmac, expectedHmac, kHMACSize) != 0) {
+    if (CRYPTO_memcmp(computedHmac, expectedHmac, kHMACSize) != 0) {
         qWarning() << "RNCryptor HMAC verification failed (wrong password?)";
         return {};
     }
@@ -182,8 +177,13 @@ QByteArray SEBConfigParser::decryptSebFile(const QByteArray& data, const QString
     // Check prefix
     QByteArray prefix = working.left(4);
 
-    if (prefix == "pswd" || prefix == "pwcc") {
-        // Password-encrypted (RNCryptor v3)
+    if (prefix == "pwcc") {
+        qWarning() << "SEBConfigParser: pwcc (configure-client) files are not supported";
+        return {};
+    }
+
+    if (prefix == "pswd") {
+        // Password-encrypted (RNCryptor v2/v3)
         QByteArray encrypted = working.mid(4);
         QByteArray decrypted = decryptRNCryptorV3(encrypted, password);
         if (decrypted.isEmpty()) return {};

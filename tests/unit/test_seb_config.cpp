@@ -222,7 +222,7 @@ TEST_F(ConfigTest, ConfigKeyPswdFixture) {
     QByteArray data = f.readAll();
 
     Config config;
-    ASSERT_TRUE(config.loadFromSebData(data, "test_password_123"));
+    ASSERT_TRUE(config.loadFromSebData(data, "exam-Pass_2026"));
 
     ConfigKeyGenerator gen;
     gen.setSettingsMap(config.examConfig().settingsMap);
@@ -232,6 +232,7 @@ TEST_F(ConfigTest, ConfigKeyPswdFixture) {
     BrowserExamKey bek;
     bek.setExamKeySalt(config.examConfig().examKeySalt);
     bek.setConfigPlistXml(config.decryptedPlistXml());
+    // Regression value: Moodle publishes no BEK vectors; this guards against unintended changes.
     EXPECT_EQ(bek.computeRawKey().toHex(),
-              "a2e3364ad22f07a2b1090094e4e77dff94b1a8e71d24bb3059e0c757c3b14028");
+              "d39610954d13b91fc2c833f5a68d7a2387d8623b0489f9326ed467d11c469b9c");
 }

@@ -10,6 +10,7 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <QFileInfo>
+#include <QScreen>
 #include <QUrl>
 #include <QDebug>
 
@@ -193,7 +194,16 @@ int main(int argc, char* argv[])
         }
         return 2;
     }
-    browser->show();
+    if (engine->config()->examConfig().fullscreen) {
+        // Size to the screen explicitly as well: in a bare X session with no window
+        // manager, nothing honors the fullscreen request and the window stays tiny.
+        if (QScreen* screen = browser->screen()) {
+            browser->setGeometry(screen->geometry());
+        }
+        browser->showFullScreen();
+    } else {
+        browser->show();
+    }
 
     int result = app.exec();
 

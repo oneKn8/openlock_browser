@@ -53,10 +53,11 @@ bool SecurePage::takeRedirectForReissue(const QUrl& url, const QByteArray& metho
         qWarning() << "Request interceptor called off the UI thread; redirect not re-issued";
         return false;
     }
-    if (!m_redirects.shouldReissue(url, method)) {
+    QUrl target;
+    if (!m_redirects.shouldReissue(url, method, &target)) {
         return false;
     }
-    QTimer::singleShot(0, this, [this, url]() { load(url); });
+    QTimer::singleShot(0, this, [this, target]() { load(target); });
     return true;
 }
 

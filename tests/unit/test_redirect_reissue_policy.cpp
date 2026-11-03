@@ -25,10 +25,10 @@ TEST(RedirectReissuePolicyTest, ReissuesGetLegOfRedirect)
 {
     auto p = enabledPolicy();
     p.onMainFrameNavigation(kTarget, true);
-    EXPECT_TRUE(p.shouldReissue(kTarget, "GET"));
+    EXPECT_TRUE(p.shouldReissue(kTarget, "GET", nullptr));
     // The re-issued load is a normal navigation and must not be re-issued again.
     p.onMainFrameNavigation(kTarget, false);
-    EXPECT_FALSE(p.shouldReissue(kTarget, "GET"));
+    EXPECT_FALSE(p.shouldReissue(kTarget, "GET", nullptr));
 }
 
 // 307/308 after a POST: Chromium repeats the POST with its body; re-issuing would turn it
@@ -37,16 +37,16 @@ TEST(RedirectReissuePolicyTest, LeavesMethodPreservingRedirectsAlone)
 {
     auto p = enabledPolicy();
     p.onMainFrameNavigation(kTarget, true);
-    EXPECT_FALSE(p.shouldReissue(kTarget, "POST"));
-    EXPECT_FALSE(p.shouldReissue(kTarget, "GET")) << "a pending redirect is consumed once";
+    EXPECT_FALSE(p.shouldReissue(kTarget, "POST", nullptr));
+    EXPECT_FALSE(p.shouldReissue(kTarget, "GET", nullptr)) << "a pending redirect is consumed once";
 }
 
 TEST(RedirectReissuePolicyTest, IgnoresRequestsThatAreNotTheRedirectTarget)
 {
     auto p = enabledPolicy();
-    EXPECT_FALSE(p.shouldReissue(kTarget, "GET")) << "no redirect was reported";
+    EXPECT_FALSE(p.shouldReissue(kTarget, "GET", nullptr)) << "no redirect was reported";
     p.onMainFrameNavigation(kTarget, true);
-    EXPECT_FALSE(p.shouldReissue(QUrl(QStringLiteral("http://lms.example/other")), "GET"));
+    EXPECT_FALSE(p.shouldReissue(QUrl(QStringLiteral("http://lms.example/other")), "GET", nullptr));
 }
 
 TEST(RedirectReissuePolicyTest, DoesNothingWhenDisabled)
@@ -54,7 +54,7 @@ TEST(RedirectReissuePolicyTest, DoesNothingWhenDisabled)
     RedirectReissuePolicy p;
     p.onMainFrameNavigation(kStart, false);
     p.onMainFrameNavigation(kTarget, true);
-    EXPECT_FALSE(p.shouldReissue(kTarget, "GET"));
+    EXPECT_FALSE(p.shouldReissue(kTarget, "GET", nullptr));
 }
 
 TEST(RedirectReissuePolicyTest, CapsALoopAndResetsOnANewNavigation)
@@ -64,7 +64,7 @@ TEST(RedirectReissuePolicyTest, CapsALoopAndResetsOnANewNavigation)
     for (int i = 0; i < RedirectReissuePolicy::kMaxReissues + 5; ++i) {
         const QUrl hop(QStringLiteral("http://lms.example/loop/%1").arg(i));
         p.onMainFrameNavigation(hop, true);
-        if (p.shouldReissue(hop, "GET")) {
+        if (p.shouldReissue(hop, "GET", nullptr)) {
             ++reissued;
             p.onMainFrameNavigation(hop, false);  // our own reload
         }
@@ -74,5 +74,20 @@ TEST(RedirectReissuePolicyTest, CapsALoopAndResetsOnANewNavigation)
     // A navigation the user or page starts begins a new chain.
     p.onMainFrameNavigation(kStart, false);
     p.onMainFrameNavigation(kTarget, true);
-    EXPECT_TRUE(p.shouldReissue(kTarget, "GET"));
+    EXPECT_TRUE(p.shouldReissue(kTarget, "GET", nullptr));
 }
+
+// The navigation can carry a fragment the network request never does: still the same
+// request, and the reload keeps the fragment.
+TEST(RedirectReissuePolicyTest, MatchesRedirectTargetsWithFragments)
+{
+    auto p = enabledPolicy();
+    const QUrl withFragment(QStringLiteral("http://lms.example/mod/quiz/view.php?id=1#region-main"));
+    p.onMainFrameNavigation(withFragment, true);
+    QUrl load;
+    ASSERT_TRUE(p.shouldReissue(kTarget, "GET", &load));
+    EXPECT_EQ(load, withFragment);
+    p.onMainFrameNavigation(withFragment, false);
+    EXPECT_FALSE(p.shouldReissue(kTarget, "GET", nullptr));
+}
+

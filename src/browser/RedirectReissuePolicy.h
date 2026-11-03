@@ -41,7 +41,7 @@ public:
             return;
         }
         m_pendingRedirect.clear();
-        if (!m_reissuedUrl.isEmpty() && url == m_reissuedUrl) {
+        if (!m_reissuedUrl.isEmpty() && sameRequest(url, m_reissuedUrl)) {
             // Our own re-issued load: same redirect chain, keep counting.
             m_reissuedUrl.clear();
             return;
@@ -51,12 +51,14 @@ public:
     }
 
     // From the request interceptor for a main-frame request. True: block this request and
-    // load `url` again as a new navigation.
-    bool shouldReissue(const QUrl& url, const QByteArray& method)
+    // load `*loadUrl` (the redirect target as navigated, fragment included) again as a new
+    // navigation.
+    bool shouldReissue(const QUrl& url, const QByteArray& method, QUrl* loadUrl)
     {
-        if (!m_enabled || m_pendingRedirect.isEmpty() || url != m_pendingRedirect) {
+        if (!m_enabled || m_pendingRedirect.isEmpty() || !sameRequest(url, m_pendingRedirect)) {
             return false;
         }
+        const QUrl target = m_pendingRedirect;
         m_pendingRedirect.clear();
         if (method != QByteArrayLiteral("GET")) {
             return false;
@@ -66,11 +68,20 @@ public:
             return false;
         }
         ++m_reissues;
-        m_reissuedUrl = url;
+        m_reissuedUrl = target;
+        if (loadUrl) {
+            *loadUrl = target;
+        }
         return true;
     }
 
 private:
+    // The network request never carries the fragment, the navigation can.
+    static bool sameRequest(const QUrl& a, const QUrl& b)
+    {
+        return a.adjusted(QUrl::RemoveFragment) == b.adjusted(QUrl::RemoveFragment);
+    }
+
     bool m_enabled = false;
     QUrl m_pendingRedirect;
     QUrl m_reissuedUrl;

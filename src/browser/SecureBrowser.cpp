@@ -18,6 +18,8 @@
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 #include <QKeyEvent>
+#include <QTimer>
+#include <QThread>
 #include <QDebug>
 
 #include <libintl.h>
@@ -38,11 +40,29 @@ SecurePage::SecurePage(QWebEngineProfile* profile, QObject* parent)
     });
 }
 
+void SecurePage::setReissueRedirects(bool enabled)
+{
+    m_redirects.setEnabled(enabled);
+}
+
+bool SecurePage::takeRedirectForReissue(const QUrl& url, const QByteArray& method)
+{
+    // Qt 6 calls profile interceptors on the UI thread (measured on 6.2). Page state is
+    // not locked, so if a Qt release ever calls from elsewhere, do nothing rather than race.
+    if (QThread::currentThread() != thread()) {
+        qWarning() << "Request interceptor called off the UI thread; redirect not re-issued";
+        return false;
+    }
+    QUrl target;
+    if (!m_redirects.shouldReissue(url, method, &target)) {
+        return false;
+    }
+    QTimer::singleShot(0, this, [this, target]() { load(target); });
+    return true;
+}
+
 bool SecurePage::acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame)
 {
-    Q_UNUSED(type);
-    Q_UNUSED(isMainFrame);
-
     // Block dangerous URL schemes
     QString scheme = url.scheme().toLower();
     if (scheme == "file" || scheme == "about" || scheme == "chrome" ||
@@ -56,6 +76,13 @@ bool SecurePage::acceptNavigationRequest(const QUrl& url, NavigationType type, b
     if (scheme != "http" && scheme != "https") {
         qWarning() << "Blocked non-http scheme:" << scheme;
         return false;
+    }
+
+    if (isMainFrame) {
+        // Chromium follows redirects itself, so 307/308 keep their method and body. The
+        // request interceptor then asks takeRedirectForReissue() whether the redirected
+        // request must be sent again with fresh SEB hashes.
+        m_redirects.onMainFrameNavigation(url, type == NavigationTypeRedirect);
     }
 
     return true;
@@ -133,6 +160,7 @@ bool SecureBrowser::initialize(const Config* config)
 
     // Create secure page
     m_page = new SecurePage(m_profile, this);
+    m_page->setReissueRedirects(examConfig.sebMode);
     m_webView = new QWebEngineView(this);
     m_webView->setPage(m_page);
 
@@ -205,6 +233,11 @@ NavigationFilter* SecureBrowser::navigationFilter() const
 QWebEngineView* SecureBrowser::webView() const
 {
     return m_webView;
+}
+
+bool SecureBrowser::takeRedirectForReissue(const QUrl& url, const QByteArray& method)
+{
+    return m_page && m_page->takeRedirectForReissue(url, method);
 }
 
 bool SecureBrowser::eventFilter(QObject* obj, QEvent* event)

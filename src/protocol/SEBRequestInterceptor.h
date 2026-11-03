@@ -6,6 +6,9 @@
 
 #include <QWebEngineUrlRequestInterceptor>
 #include <QByteArray>
+#include <QUrl>
+
+#include <functional>
 
 namespace openlock {
 
@@ -22,6 +25,11 @@ public:
     void setSEBProtocol(SEBProtocol* protocol);
     void setNavigationFilter(NavigationFilter* filter);
 
+    // Asked for every main-frame request; returning true blocks it (the hook's owner
+    // re-issues it). Used to resend redirect targets with fresh SEB hashes.
+    using MainFrameRequestHook = std::function<bool(const QUrl& url, const QByteArray& method)>;
+    void setMainFrameRequestHook(MainFrameRequestHook hook);
+
     void interceptRequest(QWebEngineUrlRequestInfo& info) override;
 
 private:
@@ -29,6 +37,7 @@ private:
 
     SEBProtocol* m_protocol = nullptr;
     NavigationFilter* m_navFilter = nullptr;
+    MainFrameRequestHook m_mainFrameHook;
 };
 
 } // namespace openlock

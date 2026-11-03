@@ -27,6 +27,11 @@ void SEBRequestInterceptor::setNavigationFilter(NavigationFilter* filter)
     m_navFilter = filter;
 }
 
+void SEBRequestInterceptor::setMainFrameRequestHook(MainFrameRequestHook hook)
+{
+    m_mainFrameHook = std::move(hook);
+}
+
 void SEBRequestInterceptor::interceptRequest(QWebEngineUrlRequestInfo& info)
 {
     QUrl url = info.requestUrl();
@@ -51,6 +56,12 @@ void SEBRequestInterceptor::interceptRequest(QWebEngineUrlRequestInfo& info)
             info.block(true);
             return;
         }
+    }
+
+    if (m_mainFrameHook && info.resourceType() == QWebEngineUrlRequestInfo::ResourceTypeMainFrame
+        && m_mainFrameHook(url, info.requestMethod())) {
+        info.block(true);
+        return;
     }
 
     // Inject SEB headers if protocol is active

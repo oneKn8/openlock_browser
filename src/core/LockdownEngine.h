@@ -39,6 +39,9 @@ public:
     bool releaseLockdown(const QString& exitPassword = {});
     LockdownState state() const;
 
+    // Developer builds only (OPENLOCK_DEVELOPER_OPTIONS): lets the binary run inside a VM.
+    void setVmDetectionEnabled(bool enabled);
+
     Config* config() const;
     SecureBrowser* browser() const;
 

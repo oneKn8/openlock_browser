@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Registers *.seb (Safe Exam Browser configuration) so file managers hand it to OpenLock. -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/seb">
+    <comment>Safe Exam Browser configuration</comment>
+    <glob pattern="*.seb"/>
+  </mime-type>
+</mime-info>

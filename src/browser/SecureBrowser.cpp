@@ -18,6 +18,7 @@
 #include <QWebEngineScript>
 #include <QWebEngineScriptCollection>
 #include <QKeyEvent>
+#include <QTimer>
 #include <QDebug>
 
 #include <libintl.h>
@@ -38,11 +39,13 @@ SecurePage::SecurePage(QWebEngineProfile* profile, QObject* parent)
     });
 }
 
+void SecurePage::setReissueRedirects(bool enabled)
+{
+    m_reissueRedirects = enabled;
+}
+
 bool SecurePage::acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame)
 {
-    Q_UNUSED(type);
-    Q_UNUSED(isMainFrame);
-
     // Block dangerous URL schemes
     QString scheme = url.scheme().toLower();
     if (scheme == "file" || scheme == "about" || scheme == "chrome" ||
@@ -56,6 +59,34 @@ bool SecurePage::acceptNavigationRequest(const QUrl& url, NavigationType type, b
     if (scheme != "http" && scheme != "https") {
         qWarning() << "Blocked non-http scheme:" << scheme;
         return false;
+    }
+
+    if (isMainFrame) {
+        if (type != NavigationTypeRedirect) {
+            // Our own re-issued load continues the chain; anything else starts a new one.
+            if (!m_reissuedUrl.isEmpty() && url == m_reissuedUrl) {
+                m_reissuedUrl.clear();
+            } else {
+                m_reissuedRedirects = 0;
+                m_reissuedUrl.clear();
+            }
+        } else if (m_reissueRedirects) {
+            // QtWebEngine (seen on 6.2) keeps the headers the interceptor set for the
+            // original request when it follows a redirect, so the redirect target is sent
+            // the X-SafeExamBrowser-*Hash of the previous URL and the LMS rejects it. Every
+            // LMS login ends in such a redirect. Cancel it and load the target as a new
+            // request, which goes through the interceptor with its own URL. 303 and 302
+            // become GET anyway; a 307/308 after a POST would lose its body, which LMS
+            // logins do not use.
+            if (++m_reissuedRedirects > kMaxReissuedRedirects) {
+                qWarning() << "Redirect loop: more than" << kMaxReissuedRedirects
+                           << "redirects, stopping at" << url.toString();
+                return false;
+            }
+            m_reissuedUrl = url;
+            QTimer::singleShot(0, this, [this, url]() { load(url); });
+            return false;
+        }
     }
 
     return true;
@@ -133,6 +164,7 @@ bool SecureBrowser::initialize(const Config* config)
 
     // Create secure page
     m_page = new SecurePage(m_profile, this);
+    m_page->setReissueRedirects(examConfig.sebMode);
     m_webView = new QWebEngineView(this);
     m_webView->setPage(m_page);
 

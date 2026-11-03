@@ -23,6 +23,14 @@ class SecurePage : public QWebEnginePage {
 public:
     explicit SecurePage(QWebEngineProfile* profile, QObject* parent = nullptr);
 
+    // When SEB headers are injected, main-frame redirects are re-issued as fresh loads so
+    // the per-URL key hashes are computed for the redirect target (see the .cpp).
+    void setReissueRedirects(bool enabled);
+
+    // Upper bound on consecutive re-issued redirects in one navigation chain; matches
+    // Chromium's own redirect limit.
+    static constexpr int kMaxReissuedRedirects = 20;
+
 protected:
     bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
     QWebEnginePage* createWindow(WebWindowType type) override;
@@ -30,6 +38,11 @@ protected:
                                   const QString& message, int lineNumber,
                                   const QString& sourceID) override;
     void triggerAction(WebAction action, bool checked = false) override;
+
+private:
+    bool m_reissueRedirects = false;
+    int m_reissuedRedirects = 0;
+    QUrl m_reissuedUrl;
 };
 
 class SecureBrowser : public QWidget {

@@ -15,6 +15,33 @@
 
 namespace openlock {
 
+namespace {
+
+    QString jsonEscape(const QString& s)
+    {
+        QString out;
+        out.reserve(s.size());
+        for (const QChar c : s) {
+            const ushort u = c.unicode();
+            switch (u) {
+            case '"':  out += QLatin1String("\\\""); break;
+            case '\b': out += QLatin1String("\\b");  break;
+            case '\f': out += QLatin1String("\\f");  break;
+            case '\n': out += QLatin1String("\\n");  break;
+            case '\r': out += QLatin1String("\\r");  break;
+            case '\t': out += QLatin1String("\\t");  break;
+            default:
+                if (u < 0x20)
+                    out += QStringLiteral("\\u%1").arg(u, 4, 16, QLatin1Char('0'));
+                else
+                    out += c;
+            }
+        }
+        return out;
+    }
+
+}
+
 ConfigKeyGenerator::ConfigKeyGenerator() = default;
 ConfigKeyGenerator::~ConfigKeyGenerator() = default;
 
@@ -85,7 +112,7 @@ QString ConfigKeyGenerator::settingsToSebJson(const QVariantMap& settings) const
         if (!first) result += ",";
         first = false;
 
-        result += "\"" + key + "\":";
+        result += "\"" + jsonEscape(key) + "\":";
         result += variantToJson(v);
     }
 
@@ -116,7 +143,7 @@ QString ConfigKeyGenerator::variantToJson(const QVariant& value) const
     }
 
     case QMetaType::QString:
-        return "\"" + value.toString() + "\"";
+        return "\"" + jsonEscape(value.toString()) + "\"";
 
     case QMetaType::QByteArray:
         // Data -> Base64
@@ -141,7 +168,7 @@ QString ConfigKeyGenerator::variantToJson(const QVariant& value) const
     }
 
     default:
-        return "\"" + value.toString() + "\"";
+        return "\"" + jsonEscape(value.toString()) + "\"";
     }
 }
 

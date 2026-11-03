@@ -19,6 +19,7 @@
 #include <QWebEngineScriptCollection>
 #include <QKeyEvent>
 #include <QTimer>
+#include <QThread>
 #include <QDebug>
 
 #include <libintl.h>
@@ -46,6 +47,12 @@ void SecurePage::setReissueRedirects(bool enabled)
 
 bool SecurePage::takeRedirectForReissue(const QUrl& url, const QByteArray& method)
 {
+    // Qt 6 calls profile interceptors on the UI thread (measured on 6.2). Page state is
+    // not locked, so if a Qt release ever calls from elsewhere, do nothing rather than race.
+    if (QThread::currentThread() != thread()) {
+        qWarning() << "Request interceptor called off the UI thread; redirect not re-issued";
+        return false;
+    }
     if (!m_redirects.shouldReissue(url, method)) {
         return false;
     }

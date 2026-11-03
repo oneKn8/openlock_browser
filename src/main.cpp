@@ -177,11 +177,20 @@ int main(int argc, char* argv[])
         return 1;
     }
     // Decide where to go before locking anything: once lockdown is engaged, releasing it
-    // can require the exam's exit password.
-    if (!startUrl.isValid() && !engine->config()->examConfig().startUrl.isValid()) {
+    // can require the exam's exit password. The page refuses anything but http(s), so a
+    // file:, relative or host-less URL would leave a blank locked window.
+    const QUrl effectiveStartUrl = startUrl.isValid() ? startUrl
+                                                      : engine->config()->examConfig().startUrl;
+    const bool webUrl = effectiveStartUrl.isValid()
+        && (effectiveStartUrl.scheme() == QLatin1String("http")
+            || effectiveStartUrl.scheme() == QLatin1String("https"))
+        && !effectiveStartUrl.host().isEmpty();
+    if (!webUrl) {
         // An exam browser with nowhere to go is a misconfiguration; never fall back to the
         // open web.
-        qCritical() << "No start URL: pass a seb:// link, --url, or a config with a start URL";
+        qCritical() << "No usable start URL (need http or https with a host):"
+                    << effectiveStartUrl.toString()
+                    << "- pass a seb:// link, --url, or a config with a start URL";
         return 2;
     }
 

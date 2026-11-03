@@ -81,10 +81,6 @@ bool LockdownEngine::initialize(const QString& configPath)
     if (m_browser->navigationFilter()) {
         interceptor->setNavigationFilter(m_browser->navigationFilter());
     }
-    interceptor->setMainFrameRequestHook(
-        [browser = m_browser.get()](const QUrl& url, const QByteArray& method) {
-            return browser->takeRedirectForReissue(url, method);
-        });
     // Get the profile from the browser's web view and install interceptor
     if (m_browser->webView() && m_browser->webView()->page()) {
         m_browser->webView()->page()->profile()->setUrlRequestInterceptor(interceptor);

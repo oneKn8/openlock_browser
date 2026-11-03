@@ -4,25 +4,24 @@
 
 #pragma once
 
-#include <QByteArray>
 #include <QUrl>
 
 namespace openlock {
 
-// Decides which main-frame redirects must be re-issued as fresh requests in SEB mode.
+// Decides which main-frame redirects must be re-issued as fresh navigations in SEB mode.
 //
-// QtWebEngine (seen on 6.2) keeps the headers the request interceptor set for the original
-// request when it follows a redirect, so the redirect target would be sent the
-// X-SafeExamBrowser-*Hash of the previous URL and the LMS would reject it. Re-issuing the
-// target as a new navigation makes the interceptor hash the URL actually requested.
+// QtWebEngine (seen on 6.2) sends a redirected request before the request interceptor
+// can change or block it: the redirect target gets the X-SafeExamBrowser-*Hash headers
+// of the previous URL, so the LMS rejects it, and blocking it in the interceptor is too
+// late because the server has already run it (Moodle's access log shows the leg, then a
+// client abort). On Moodle's login a duplicated "testsession" leg uses up the page the
+// student asked for and lands them on the Dashboard instead of the quiz.
 //
-// Only GET legs are re-issued, because a new navigation is always a GET. A 307/308 after a
-// POST keeps its method and body and is left to Chromium (its hash stays stale; LMS logins
-// answer a POST with 302/303, which arrive here as GET).
-//
-// Flow: SecurePage reports every main-frame navigation decision; the request interceptor
-// asks shouldReissue() for every main-frame request and blocks it when told to, after
-// which the caller loads the URL again. Kept free of QtWebEngine types for unit tests.
+// So redirects are refused in acceptNavigationRequest(), before Chromium follows them,
+// and the target is loaded again as a new navigation, which the interceptor hashes for
+// the URL actually requested. A new navigation is a GET: a 307/308 after a POST loses its
+// method and body (LMS form posts answer with 302/303, which browsers follow with GET
+// anyway). Kept free of QtWebEngine types for unit tests.
 class RedirectReissuePolicy {
 public:
     // Matches Chromium's own redirect limit.
@@ -31,59 +30,37 @@ public:
     void setEnabled(bool enabled) { m_enabled = enabled; }
     bool isEnabled() const { return m_enabled; }
 
-    // From acceptNavigationRequest() for main-frame navigations that are allowed.
-    void onMainFrameNavigation(const QUrl& url, bool isRedirect)
+    // From acceptNavigationRequest() for every main-frame navigation that passed the
+    // other checks. True: refuse this navigation and load `url` as a new navigation.
+    bool shouldReissue(const QUrl& url, bool isRedirect)
     {
-        if (isRedirect) {
-            if (m_enabled) {
-                m_pendingRedirect = url;
+        if (!isRedirect) {
+            if (!m_reissuedUrl.isEmpty() && sameRequest(url, m_reissuedUrl)) {
+                // Our own re-issued load: same redirect chain, keep counting.
+                m_reissuedUrl.clear();
+                return false;
             }
-            return;
-        }
-        m_pendingRedirect.clear();
-        if (!m_reissuedUrl.isEmpty() && sameRequest(url, m_reissuedUrl)) {
-            // Our own re-issued load: same redirect chain, keep counting.
             m_reissuedUrl.clear();
-            return;
-        }
-        m_reissuedUrl.clear();
-        m_reissues = 0;
-    }
-
-    // From the request interceptor for a main-frame request. True: block this request and
-    // load `*loadUrl` (the redirect target as navigated, fragment included) again as a new
-    // navigation.
-    bool shouldReissue(const QUrl& url, const QByteArray& method, QUrl* loadUrl)
-    {
-        if (!m_enabled || m_pendingRedirect.isEmpty() || !sameRequest(url, m_pendingRedirect)) {
+            m_reissues = 0;
             return false;
         }
-        const QUrl target = m_pendingRedirect;
-        m_pendingRedirect.clear();
-        if (method != QByteArrayLiteral("GET")) {
-            return false;
-        }
-        if (m_reissues >= kMaxReissues) {
-            // Leave the loop to Chromium, which stops it with its own redirect limit.
+        if (!m_enabled || m_reissues >= kMaxReissues) {
+            // Past the cap, Chromium's own redirect limit ends the loop.
             return false;
         }
         ++m_reissues;
-        m_reissuedUrl = target;
-        if (loadUrl) {
-            *loadUrl = target;
-        }
+        m_reissuedUrl = url;
         return true;
     }
 
 private:
-    // The network request never carries the fragment, the navigation can.
+    // The navigation can carry a fragment the network request never does.
     static bool sameRequest(const QUrl& a, const QUrl& b)
     {
         return a.adjusted(QUrl::RemoveFragment) == b.adjusted(QUrl::RemoveFragment);
     }
 
     bool m_enabled = false;
-    QUrl m_pendingRedirect;
     QUrl m_reissuedUrl;
     int m_reissues = 0;
 };

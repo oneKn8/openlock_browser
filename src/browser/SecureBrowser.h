@@ -25,14 +25,10 @@ class SecurePage : public QWebEnginePage {
 public:
     explicit SecurePage(QWebEngineProfile* profile, QObject* parent = nullptr);
 
-    // When SEB headers are injected, GET legs of main-frame redirects are re-issued as
-    // fresh loads so the per-URL key hashes match the redirect target
+    // When SEB headers are injected, main-frame redirects are refused and their targets
+    // loaded as fresh navigations so the per-URL key hashes match the URL requested
     // (see RedirectReissuePolicy).
     void setReissueRedirects(bool enabled);
-
-    // Called by the request interceptor for each main-frame request. True: the caller must
-    // block the request; the page has scheduled the same URL as a new navigation.
-    bool takeRedirectForReissue(const QUrl& url, const QByteArray& method);
 
 protected:
     bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
@@ -61,9 +57,6 @@ public:
     NavigationFilter* navigationFilter() const;
 
     QWebEngineView* webView() const;
-
-    // See SecurePage::takeRedirectForReissue.
-    bool takeRedirectForReissue(const QUrl& url, const QByteArray& method);
 
 signals:
     void urlChanged(const QUrl& url);

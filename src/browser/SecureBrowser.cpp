@@ -41,7 +41,16 @@ SecurePage::SecurePage(QWebEngineProfile* profile, QObject* parent)
 
 void SecurePage::setReissueRedirects(bool enabled)
 {
-    m_reissueRedirects = enabled;
+    m_redirects.setEnabled(enabled);
+}
+
+bool SecurePage::takeRedirectForReissue(const QUrl& url, const QByteArray& method)
+{
+    if (!m_redirects.shouldReissue(url, method)) {
+        return false;
+    }
+    QTimer::singleShot(0, this, [this, url]() { load(url); });
+    return true;
 }
 
 bool SecurePage::acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame)
@@ -62,31 +71,10 @@ bool SecurePage::acceptNavigationRequest(const QUrl& url, NavigationType type, b
     }
 
     if (isMainFrame) {
-        if (type != NavigationTypeRedirect) {
-            // Our own re-issued load continues the chain; anything else starts a new one.
-            if (!m_reissuedUrl.isEmpty() && url == m_reissuedUrl) {
-                m_reissuedUrl.clear();
-            } else {
-                m_reissuedRedirects = 0;
-                m_reissuedUrl.clear();
-            }
-        } else if (m_reissueRedirects) {
-            // QtWebEngine (seen on 6.2) keeps the headers the interceptor set for the
-            // original request when it follows a redirect, so the redirect target is sent
-            // the X-SafeExamBrowser-*Hash of the previous URL and the LMS rejects it. Every
-            // LMS login ends in such a redirect. Cancel it and load the target as a new
-            // request, which goes through the interceptor with its own URL. 303 and 302
-            // become GET anyway; a 307/308 after a POST would lose its body, which LMS
-            // logins do not use.
-            if (++m_reissuedRedirects > kMaxReissuedRedirects) {
-                qWarning() << "Redirect loop: more than" << kMaxReissuedRedirects
-                           << "redirects, stopping at" << url.toString();
-                return false;
-            }
-            m_reissuedUrl = url;
-            QTimer::singleShot(0, this, [this, url]() { load(url); });
-            return false;
-        }
+        // Chromium follows redirects itself, so 307/308 keep their method and body. The
+        // request interceptor then asks takeRedirectForReissue() whether the redirected
+        // request must be sent again with fresh SEB hashes.
+        m_redirects.onMainFrameNavigation(url, type == NavigationTypeRedirect);
     }
 
     return true;
@@ -237,6 +225,11 @@ NavigationFilter* SecureBrowser::navigationFilter() const
 QWebEngineView* SecureBrowser::webView() const
 {
     return m_webView;
+}
+
+bool SecureBrowser::takeRedirectForReissue(const QUrl& url, const QByteArray& method)
+{
+    return m_page && m_page->takeRedirectForReissue(url, method);
 }
 
 bool SecureBrowser::eventFilter(QObject* obj, QEvent* event)

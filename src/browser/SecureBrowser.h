@@ -10,6 +10,8 @@
 #include <QWebEngineProfile>
 #include <memory>
 
+#include "browser/RedirectReissuePolicy.h"
+
 namespace openlock {
 
 class NavigationFilter;
@@ -23,13 +25,14 @@ class SecurePage : public QWebEnginePage {
 public:
     explicit SecurePage(QWebEngineProfile* profile, QObject* parent = nullptr);
 
-    // When SEB headers are injected, main-frame redirects are re-issued as fresh loads so
-    // the per-URL key hashes are computed for the redirect target (see the .cpp).
+    // When SEB headers are injected, GET legs of main-frame redirects are re-issued as
+    // fresh loads so the per-URL key hashes match the redirect target
+    // (see RedirectReissuePolicy).
     void setReissueRedirects(bool enabled);
 
-    // Upper bound on consecutive re-issued redirects in one navigation chain; matches
-    // Chromium's own redirect limit.
-    static constexpr int kMaxReissuedRedirects = 20;
+    // Called by the request interceptor for each main-frame request. True: the caller must
+    // block the request; the page has scheduled the same URL as a new navigation.
+    bool takeRedirectForReissue(const QUrl& url, const QByteArray& method);
 
 protected:
     bool acceptNavigationRequest(const QUrl& url, NavigationType type, bool isMainFrame) override;
@@ -40,9 +43,7 @@ protected:
     void triggerAction(WebAction action, bool checked = false) override;
 
 private:
-    bool m_reissueRedirects = false;
-    int m_reissuedRedirects = 0;
-    QUrl m_reissuedUrl;
+    RedirectReissuePolicy m_redirects;
 };
 
 class SecureBrowser : public QWidget {
@@ -60,6 +61,9 @@ public:
     NavigationFilter* navigationFilter() const;
 
     QWebEngineView* webView() const;
+
+    // See SecurePage::takeRedirectForReissue.
+    bool takeRedirectForReissue(const QUrl& url, const QByteArray& method);
 
 signals:
     void urlChanged(const QUrl& url);

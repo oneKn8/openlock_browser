@@ -171,6 +171,20 @@ int main(int argc, char* argv[])
     }
 #endif
 
+    SecureBrowser* browser = engine->browser();
+    if (!browser) {
+        qCritical() << "Browser was not created";
+        return 1;
+    }
+    // Decide where to go before locking anything: once lockdown is engaged, releasing it
+    // can require the exam's exit password.
+    if (!startUrl.isValid() && !engine->config()->examConfig().startUrl.isValid()) {
+        // An exam browser with nowhere to go is a misconfiguration; never fall back to the
+        // open web.
+        qCritical() << "No start URL: pass a seb:// link, --url, or a config with a start URL";
+        return 2;
+    }
+
     if (!devMode) {
         if (!engine->engageLockdown()) {
             qCritical() << "Failed to engage lockdown";
@@ -178,21 +192,8 @@ int main(int argc, char* argv[])
         }
     }
 
-    SecureBrowser* browser = engine->browser();
-    if (!browser) {
-        qCritical() << "Browser was not created";
-        return 1;
-    }
     if (startUrl.isValid()) {
         browser->navigateTo(startUrl);
-    } else if (browser->currentUrl().isEmpty() || !browser->currentUrl().isValid()) {
-        // An exam browser with nowhere to go is a misconfiguration; never fall back to the
-        // open web.
-        qCritical() << "No start URL: pass a seb:// link, --url, or a config with a start URL";
-        if (!devMode) {
-            engine->releaseLockdown();
-        }
-        return 2;
     }
     if (engine->config()->examConfig().fullscreen) {
         // Size to the screen explicitly as well: in a bare X session with no window

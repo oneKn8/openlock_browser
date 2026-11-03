@@ -4,8 +4,10 @@
 
 #include <gtest/gtest.h>
 #include "core/Config.h"
+#include "protocol/ConfigKeyGenerator.h"
 
 #include <QCoreApplication>
+#include <QProcess>
 #include <QTemporaryFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -152,4 +154,49 @@ TEST_F(ConfigTest, FileTypeDetection) {
     EXPECT_TRUE(Config::isOpenLockFile("exam.openlock"));
     EXPECT_TRUE(Config::isOpenLockFile("EXAM.OPENLOCK"));
     EXPECT_FALSE(Config::isOpenLockFile("exam.seb"));
+}
+
+// Download a file via curl; returns empty on any error (no-network -> skip).
+static QByteArray downloadFixture(const char* url) {
+    QProcess proc;
+    proc.start("curl", {"-sfL", "--max-time", "15", url});
+    if (!proc.waitForFinished(20000) || proc.exitCode() != 0)
+        return {};
+    return proc.readAllStandardOutput();
+}
+
+// Moodle fixture: SEB Mac 2.1.4; verifies Config Key against Moodle's own test vector.
+TEST_F(ConfigTest, ConfigKeyMoodleFixtureMac) {
+    QByteArray data = downloadFixture(
+        "https://raw.githubusercontent.com/moodle/moodle/main/"
+        "public/mod/quiz/accessrule/seb/tests/fixtures/unencrypted_mac_001.seb");
+    if (data.isEmpty())
+        GTEST_SKIP() << "Moodle fixture unavailable (no network)";
+
+    Config config;
+    ASSERT_TRUE(config.loadFromSebData(data, {}));
+
+    ConfigKeyGenerator gen;
+    gen.setSettingsMap(config.examConfig().settingsMap);
+    QByteArray key = gen.computeRawKey().toHex();
+
+    EXPECT_EQ(key, "4fa9af8ec8759eb7c680752ef4ee5eaf1a860628608fccae2715d519849f9292");
+}
+
+// Moodle fixture: SEB Win 2.1.1; second independent test vector.
+TEST_F(ConfigTest, ConfigKeyMoodleFixtureWin) {
+    QByteArray data = downloadFixture(
+        "https://raw.githubusercontent.com/moodle/moodle/main/"
+        "public/mod/quiz/accessrule/seb/tests/fixtures/unencrypted_win_223.seb");
+    if (data.isEmpty())
+        GTEST_SKIP() << "Moodle fixture unavailable (no network)";
+
+    Config config;
+    ASSERT_TRUE(config.loadFromSebData(data, {}));
+
+    ConfigKeyGenerator gen;
+    gen.setSettingsMap(config.examConfig().settingsMap);
+    QByteArray key = gen.computeRawKey().toHex();
+
+    EXPECT_EQ(key, "2534e4e9f3188f9f9133bf7cf7b4c5d898292bbd7e8d0230f39d1176636a1431");
 }

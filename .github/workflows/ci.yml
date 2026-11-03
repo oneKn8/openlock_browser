@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    name: Build & Test (${{ matrix.build_type }})
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build pkg-config \
+            libssl-dev zlib1g-dev \
+            libcups2-dev \
+            libx11-dev libxrandr-dev \
+            libxcb1-dev libxcb-keysyms1-dev \
+            libxcb-xfixes0-dev libxcb-randr0-dev \
+            libxkbcommon-dev \
+            gettext \
+            libgtest-dev
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
+        with:
+          version: '6.7.3'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: 'qtwebengine qtwebchannel qtpositioning'
+          install-deps: true
+          cache: true
+
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@f09c25b45002a07be2955cbe52e8cee55643f89d # v1.2.24
+        with:
+          key: ${{ runner.os }}-${{ matrix.build_type }}
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DOPENLOCK_BUILD_TESTS=ON \
+            -DOPENLOCK_DEVELOPER_OPTIONS=OFF \
+            -DOPENLOCK_ENABLE_VM_DETECTION=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        working-directory: build
+        env:
+          QT_QPA_PLATFORM: offscreen # Qt needs a platform plugin even for headless tests
+        run: ctest --output-on-failure --parallel 4

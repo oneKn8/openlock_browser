@@ -40,6 +40,9 @@ find_package(Qt6 REQUIRED COMPONENTS
 find_package(PkgConfig REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+# for gzip decompression in SEBConfigParser
+find_package(ZLIB REQUIRED)
+
 pkg_check_modules(X11 IMPORTED_TARGET x11)
 pkg_check_modules(XRANDR IMPORTED_TARGET xrandr)
 pkg_check_modules(XCB IMPORTED_TARGET xcb xcb-keysyms xcb-xfixes xcb-randr)
@@ -107,6 +110,7 @@ target_link_libraries(openlock_core PUBLIC
     Qt6::Network
     OpenSSL::SSL
     OpenSSL::Crypto
+    ZLIB::ZLIB
 )
 
 if(X11_FOUND)
@@ -137,7 +141,7 @@ endif()
 
 # Main executable
 add_executable(openlock src/main.cpp)
-target_link_libraries(openlock PRIVATE openlock_core)
+target_link_libraries(openlock PRIVATE openlock_core ZLIB::ZLIB)
 
 # Copy data files to build directory for development runs
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/share/openlock)

@@ -11,3 +11,7 @@ add_custom_target(${DESKTOP_FILE} ALL
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${DESKTOP_FILE}
         DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/applications
 )
+
+install(FILES openlock-seb.xml
+        DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/mime/packages
+)

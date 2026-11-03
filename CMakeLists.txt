@@ -15,6 +15,9 @@ set(CMAKE_AUTOUIC ON)
 option(OPENLOCK_BUILD_TESTS "Build unit tests" ON)
 option(OPENLOCK_ENABLE_WAYLAND "Enable Wayland/Cage kiosk support" ON)
 option(OPENLOCK_ENABLE_VM_DETECTION "Enable VM detection (can be disabled for dev)" ON)
+# Adds --no-lockdown and --no-vm-check. Never enable for release or distribution builds:
+# they let the browser run unlocked while still presenting valid SEB keys.
+option(OPENLOCK_DEVELOPER_OPTIONS "Build developer-only command-line switches" OFF)
 
 # Standard install paths
 include(GNUInstallDirs)
@@ -142,6 +145,10 @@ endif()
 # Main executable
 add_executable(openlock src/main.cpp)
 target_link_libraries(openlock PRIVATE openlock_core ZLIB::ZLIB)
+if(OPENLOCK_DEVELOPER_OPTIONS)
+    target_compile_definitions(openlock PRIVATE OPENLOCK_DEVELOPER_OPTIONS)
+    message(WARNING "OPENLOCK_DEVELOPER_OPTIONS is ON: this binary can run without lockdown. Do not distribute it.")
+endif()
 
 # Copy data files to build directory for development runs
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/share/openlock)

@@ -192,6 +192,11 @@ bool LockdownEngine::startKiosk()
     return m_kiosk->engage();
 }
 
+void LockdownEngine::setVmDetectionEnabled(bool enabled)
+{
+    m_integrity->setVMDetectionEnabled(enabled);
+}
+
 bool LockdownEngine::startProcessGuard()
 {
     return m_processGuard->startMonitoring();

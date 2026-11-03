@@ -18,7 +18,6 @@ public:
 
 private:
     bool checkTracerPid() const;
-    bool checkPtraceSelf() const;
     bool checkDebuggerProcesses() const;
 
     mutable QString m_detectedDebugger;

@@ -9,9 +9,6 @@
 #include <QDir>
 #include <QDebug>
 
-#include <sys/ptrace.h>
-#include <unistd.h>
-#include <cerrno>
 
 namespace openlock {
 
@@ -20,7 +17,10 @@ DebugDetector::~DebugDetector() = default;
 
 bool DebugDetector::isBeingDebugged() const
 {
-    return checkTracerPid() || checkPtraceSelf() || checkDebuggerProcesses();
+    // No PTRACE_TRACEME self-test: it makes the parent process our tracer permanently (a
+    // tracee cannot detach itself), so the next signal would stop OpenLock forever.
+    // An attached debugger already shows up as a non-zero TracerPid.
+    return checkTracerPid() || checkDebuggerProcesses();
 }
 
 QString DebugDetector::debuggerName() const
@@ -53,27 +53,6 @@ bool DebugDetector::checkTracerPid() const
         }
     }
 
-    return false;
-}
-
-bool DebugDetector::checkPtraceSelf() const
-{
-    // Try to ptrace ourselves — fails if already being traced
-    long result = ptrace(PTRACE_TRACEME, 0, nullptr, nullptr);
-    if (result == -1) {
-        if (errno == EPERM) {
-            // Yama ptrace_scope or similar security policy is blocking us.
-            // This is NOT evidence of a debugger — fall back to TracerPid check,
-            // which is already handled by checkTracerPid().
-            return false;
-        }
-        m_detectedDebugger = "ptrace attached";
-        qWarning() << "PTRACE_TRACEME failed — already being traced";
-        return true;
-    }
-
-    // Detach from ourselves
-    ptrace(PTRACE_DETACH, 0, nullptr, nullptr);
     return false;
 }
 

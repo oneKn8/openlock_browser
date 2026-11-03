@@ -52,6 +52,8 @@ struct ExamConfig {
     bool sebMode = false;
     QByteArray sebConfigData;    // Raw config for Config Key computation
     QString sebConfigPassword;
+    QByteArray examKeySalt;      // extracted from SEB plist <examKeySalt> field
+    QVariantMap settingsMap;     // complete parsed plist settings for Config Key
 
     // Kiosk
     bool fullscreen = true;
@@ -79,6 +81,8 @@ public:
 
     QByteArray rawConfigData() const;
     QByteArray configKeyHash() const;
+    QVariantMap settingsMap() const;
+    QByteArray decryptedPlistXml() const;
 
     static bool isSebFile(const QString& path);
     static bool isOpenLockFile(const QString& path);
@@ -95,6 +99,7 @@ private:
     ConfigFormat m_format = ConfigFormat::OpenLock;
     ExamConfig m_examConfig;
     QByteArray m_rawData;
+    QByteArray m_decryptedPlistXml;
 };
 
 } // namespace openlock

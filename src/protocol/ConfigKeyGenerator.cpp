@@ -15,6 +15,33 @@
 
 namespace openlock {
 
+namespace {
+
+    QString jsonEscape(const QString& s)
+    {
+        QString out;
+        out.reserve(s.size());
+        for (const QChar c : s) {
+            const ushort u = c.unicode();
+            switch (u) {
+            case '"':  out += QLatin1String("\\\""); break;
+            case '\b': out += QLatin1String("\\b");  break;
+            case '\f': out += QLatin1String("\\f");  break;
+            case '\n': out += QLatin1String("\\n");  break;
+            case '\r': out += QLatin1String("\\r");  break;
+            case '\t': out += QLatin1String("\\t");  break;
+            default:
+                if (u < 0x20 || u == 0x2028 || u == 0x2029)
+                    out += QStringLiteral("\\u%1").arg(u, 4, 16, QLatin1Char('0'));
+                else
+                    out += c;
+            }
+        }
+        return out;
+    }
+
+}
+
 ConfigKeyGenerator::ConfigKeyGenerator() = default;
 ConfigKeyGenerator::~ConfigKeyGenerator() = default;
 
@@ -73,16 +100,22 @@ QString ConfigKeyGenerator::settingsToSebJson(const QVariantMap& settings) const
 
     // Sort case-insensitive (culture-invariant)
     std::sort(keys.begin(), keys.end(), [](const QString& a, const QString& b) {
-        return a.compare(b, Qt::CaseInsensitive) < 0;
+        int cmp = a.compare(b, Qt::CaseInsensitive);
+        if (cmp != 0) return cmp < 0;
+        return a < b;  // lowercase-first tie-break
     });
 
     bool first = true;
     for (const QString& key : keys) {
+        QVariant v = settings[key];
+        if (v.typeId() == QMetaType::QVariantMap && v.toMap().isEmpty())
+            continue;
+
         if (!first) result += ",";
         first = false;
 
-        result += "\"" + key + "\":";
-        result += variantToJson(settings[key]);
+        result += "\"" + jsonEscape(key) + "\":";
+        result += variantToJson(v);
     }
 
     result += "}";
@@ -102,24 +135,24 @@ QString ConfigKeyGenerator::variantToJson(const QVariant& value) const
     case QMetaType::Double:
     case QMetaType::Float: {
         double d = value.toDouble();
-        // Proper rounding (0.10000000000000001 -> 0.1)
-        QString s = QString::number(d, 'g', 15);
-        // Ensure it still looks like a number
-        if (!s.contains('.') && !s.contains('e') && !s.contains('E')) {
-            s += ".0";
-        }
-        return s;
+        if (std::isfinite(d) && d == std::floor(d) && std::abs(d) < 1e15)
+            return QString::number(static_cast<long long>(d));
+        return QString::number(d, 'g', 15);
     }
 
     case QMetaType::QString:
-        return "\"" + value.toString() + "\"";
+        return "\"" + jsonEscape(value.toString()) + "\"";
 
     case QMetaType::QByteArray:
         // Data -> Base64
         return "\"" + value.toByteArray().toBase64() + "\"";
 
-    case QMetaType::QDateTime:
-        return "\"" + value.toDateTime().toString(Qt::ISODate) + "\"";
+    case QMetaType::QDateTime: {
+        QString s = value.toDateTime().toString(Qt::ISODate);
+        if (s.endsWith('Z'))
+            s = s.chopped(1) + "+00:00";
+        return "\"" + s + "\"";
+    }
 
     case QMetaType::QVariantMap: {
         return settingsToSebJson(value.toMap());
@@ -137,7 +170,7 @@ QString ConfigKeyGenerator::variantToJson(const QVariant& value) const
     }
 
     default:
-        return "\"" + value.toString() + "\"";
+        return "\"" + jsonEscape(value.toString()) + "\"";
     }
 }
 

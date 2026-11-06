@@ -13,6 +13,7 @@
 #include <QScreen>
 #include <QUrl>
 #include <QDebug>
+#include <QMap>
 #include <QMessageBox>
 
 #include <cstdio>
@@ -208,9 +209,16 @@ int main(int argc, char* argv[])
                 return 1;
             }
 
-            QString msg = QStringLiteral("The following applications must be closed before the exam can start:\n\n");
+            QMap<QString, int> procCounts;
             for (const auto& [name, pid] : blockedProcs) {
-                msg += QStringLiteral("  \u2022 %1 (PID %2)\n").arg(name).arg(pid);
+                procCounts[name]++;
+            }
+            QString msg = QStringLiteral("The following applications must be closed before the exam can start:\n\n");
+            for (auto it = procCounts.constBegin(); it != procCounts.constEnd(); ++it) {
+                if (it.value() > 1)
+                    msg += QStringLiteral("  \u2022 %1 (%2 processes)\n").arg(it.key()).arg(it.value());
+                else
+                    msg += QStringLiteral("  \u2022 %1\n").arg(it.key());
             }
             msg += QStringLiteral("\nClose them and click Retry, or Cancel to exit.");
 

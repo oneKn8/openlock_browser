@@ -13,6 +13,7 @@
 #include <QScreen>
 #include <QUrl>
 #include <QDebug>
+#include <QMessageBox>
 
 #include <cstdio>
 #include <libintl.h>
@@ -195,9 +196,37 @@ int main(int argc, char* argv[])
     }
 
     if (!devMode) {
-        if (!engine->engageLockdown()) {
-            qCritical() << "Failed to engage lockdown";
-            return 1;
+        QList<QPair<QString, int>> blockedProcs;
+        QObject::connect(engine.get(), &LockdownEngine::blockedProcessDetected,
+            [&blockedProcs](const QString& name, int pid) {
+                blockedProcs.append({name, pid});
+            });
+
+        while (!engine->engageLockdown()) {
+            if (blockedProcs.isEmpty()) {
+                qCritical() << "Failed to engage lockdown";
+                return 1;
+            }
+
+            QString msg = QStringLiteral("The following applications must be closed before the exam can start:\n\n");
+            for (const auto& [name, pid] : blockedProcs) {
+                msg += QStringLiteral("  \u2022 %1 (PID %2)\n").arg(name).arg(pid);
+            }
+            msg += QStringLiteral("\nClose them and click Retry, or Cancel to exit.");
+
+            QMessageBox::StandardButton btn = QMessageBox::warning(
+                nullptr,
+                QStringLiteral("Blocked Applications"),
+                msg,
+                QMessageBox::Retry | QMessageBox::Cancel,
+                QMessageBox::Retry
+            );
+
+            if (btn != QMessageBox::Retry) {
+                return 1;
+            }
+
+            blockedProcs.clear();
         }
     }
 

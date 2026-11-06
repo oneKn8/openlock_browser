@@ -18,6 +18,7 @@
 
 #include <cstdio>
 #include <libintl.h>
+#define _(String) gettext(String)
 #include "localepath.h"
 
 using namespace openlock;
@@ -198,7 +199,7 @@ int main(int argc, char* argv[])
 
     if (!devMode) {
         QList<QPair<QString, int>> blockedProcs;
-        QObject::connect(engine.get(), &LockdownEngine::blockedProcessDetected,
+        auto conn = QObject::connect(engine.get(), &LockdownEngine::blockedProcessDetected,
             [&blockedProcs](const QString& name, int pid) {
                 blockedProcs.append({name, pid});
             });
@@ -209,26 +210,34 @@ int main(int argc, char* argv[])
                 return 1;
             }
 
-            QMap<QString, int> procCounts;
-            for (const auto& [name, pid] : blockedProcs) {
-                procCounts[name]++;
-            }
-            QString msg = QStringLiteral("The following applications must be closed before the exam can start:\n\n");
-            for (auto it = procCounts.constBegin(); it != procCounts.constEnd(); ++it) {
-                if (it.value() > 1)
-                    msg += QStringLiteral("  \u2022 %1 (%2 processes)\n").arg(it.key()).arg(it.value());
-                else
-                    msg += QStringLiteral("  \u2022 %1\n").arg(it.key());
-            }
-            msg += QStringLiteral("\nClose them and click Retry, or Cancel to exit.");
+            for (const auto& [name, pid] : blockedProcs)
+                qWarning() << "Startup blocked process:" << name << "PID:" << pid;
 
-            QMessageBox::StandardButton btn = QMessageBox::warning(
-                nullptr,
-                QStringLiteral("Blocked Applications"),
-                msg,
-                QMessageBox::Retry | QMessageBox::Cancel,
-                QMessageBox::Retry
-            );
+            QMap<QString, QList<int>> procPids;
+            for (const auto& [name, pid] : blockedProcs)
+                procPids[name].append(pid);
+
+            QString msg = QString::fromUtf8(_("The following applications must be closed before the exam can start:\n\n"));
+            for (auto it = procPids.constBegin(); it != procPids.constEnd(); ++it) {
+                const QList<int>& pids = it.value();
+                if (pids.size() > 1) {
+                    QStringList pidStrs;
+                    for (int p : pids) pidStrs.append(QString::number(p));
+                    msg += QString::fromUtf8(_("  \u2022 %1 (PIDs: %2)\n")).arg(it.key(), pidStrs.join(", "));
+                } else {
+                    msg += QString::fromUtf8(_("  \u2022 %1 (PID: %2)\n")).arg(it.key()).arg(pids.first());
+                }
+            }
+            msg += QString::fromUtf8(_("\nClose them and click Retry, or Cancel to exit."));
+
+            QMessageBox box(QMessageBox::Warning,
+                            QString::fromUtf8(_("Blocked Applications")),
+                            msg,
+                            QMessageBox::Retry | QMessageBox::Cancel,
+                            nullptr);
+            box.setDefaultButton(QMessageBox::Retry);
+            box.setTextFormat(Qt::PlainText);
+            QMessageBox::StandardButton btn = static_cast<QMessageBox::StandardButton>(box.exec());
 
             if (btn != QMessageBox::Retry) {
                 return 1;
@@ -236,6 +245,7 @@ int main(int argc, char* argv[])
 
             blockedProcs.clear();
         }
+        QObject::disconnect(conn);
     }
 
     if (startUrl.isValid()) {
